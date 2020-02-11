@@ -16,6 +16,12 @@ To install run `make` then `sudo make install`.
 
 To uninstall run `sudo make uninstall`.
 
+## Testing
+
+Unit tests make use of the [Unity testing framework](http://www.throwtheswitch.org/unity) which is used by the [Ceedling](http://www.throwtheswitch.org/ceedling) build system.
+
+To start all tests run `ceedling test:all`.
+
 ## How to link in a Makefile
 
 1. Include the compiler flag `-I/usr/local/include/j1939decode`
