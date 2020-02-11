@@ -91,3 +91,68 @@ void test_j1939decode_message_decoded_false(void)
     cJSON_Delete(json);
     free(json_string);
 }
+
+void test_j1939decode_message_data_raw(void)
+{
+    /* Set arbitrary data values */
+    data[0] = 11;
+    data[1] = 22;
+    data[2] = 33;
+    data[3] = 44;
+    data[4] = 55;
+    data[5] = 66;
+    data[6] = 77;
+    data[7] = 88;
+
+    char * json_string = j1939_decode_to_json(&header, (uint64_t *) data, 0);
+    cJSON * json = cJSON_Parse(json_string);
+
+    char * item_string = cJSON_Print(cJSON_GetObjectItemCaseSensitive(json, "DataRaw"));
+
+    /* "DataRaw" key should be the same as the raw message data bytes */
+    TEST_ASSERT_EQUAL_STRING("[11, 22, 33, 44, 55, 66, 77, 88]", item_string);
+
+    free(item_string);
+    cJSON_Delete(json);
+    free(json_string);
+}
+
+void test_j1939decode_message_sa_reserved(void)
+{
+    char * json_string;
+    cJSON * json;
+
+    for(int sa = 92; sa <= 127; sa++)
+    {
+        header.sa = sa;
+
+        json_string = j1939_decode_to_json(&header, (uint64_t *) data, 0);
+        json = cJSON_Parse(json_string);
+
+        /* "SAName" key should be set to "Reserved" if SA is between 92 through to 127 inclusive */
+        TEST_ASSERT_EQUAL_STRING("Reserved", cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(json, "SAName")));
+    }
+
+    cJSON_Delete(json);
+    free(json_string);
+}
+
+void test_j1939decode_message_sa_industry_group_specific(void)
+{
+    char * json_string;
+    cJSON * json;
+
+    for(int sa = 128; sa <= 247; sa++)
+    {
+        header.sa = sa;
+
+        json_string = j1939_decode_to_json(&header, (uint64_t *) data, 0);
+        json = cJSON_Parse(json_string);
+
+        /* "SAName" key should be set to "Industry Group specific" if SA is between 128 through to 247 inclusive */
+        TEST_ASSERT_EQUAL_STRING("Industry Group specific", cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(json, "SAName")));
+    }
+
+    cJSON_Delete(json);
+    free(json_string);
+}
