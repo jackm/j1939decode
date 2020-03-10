@@ -10,7 +10,7 @@ extern "C" {
 /* Project version */
 #define J1939_DECODE_VERSION_MAJOR 1
 #define J1939_DECODE_VERSION_MINOR 0
-#define J1939_DECODE_VERSION_PATCH 0
+#define J1939_DECODE_VERSION_PATCH 1
 
 typedef struct _j1939_header
 {
