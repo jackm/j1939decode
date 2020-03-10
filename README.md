@@ -1,6 +1,6 @@
 # J1939 decode library
 
-This repository builds j1939decode as a separate static library.
+This repository builds j1939decode as a separate library.
 
 This library by default will attempt to read the file `J1939db.json` from the current directory to load in the J1939 database.
 If this file cannot be read, J1939 decoding will not be possible.
@@ -8,13 +8,28 @@ This file name and path can changed by redefining the `J1939DB` C macro to point
 
 See below for how to generate the J1939 database file.
 
+## Building
+
+Create a build directory relative to project root, run cmake and then make.
+
+```
+mkdir -p build
+cd build
+cmake ..
+make
+```
+
+## Cleaning
+
+Remove generated directories: `build/`
+
 ## Install
 
-To install run `make` then `sudo make install`.
+To install first build the library, then run `sudo make install` from within the build directory.
 
 ## Uninstall
 
-To uninstall run `sudo make uninstall`.
+To uninstall run `sudo make uninstall` from within the build directory.
 
 ## Testing
 
