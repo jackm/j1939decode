@@ -1,6 +1,10 @@
 #ifndef J1939_H
 #define J1939_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 /* Project version */
@@ -61,5 +65,9 @@ void j1939_deinit(void);
 }
  */
 char * j1939_decode_to_json(j1939_header_t * header, const uint64_t * data, uint8_t pretty);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //J1939_H
