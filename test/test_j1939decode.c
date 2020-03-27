@@ -49,7 +49,7 @@ void tearDown(void)
 
 void test_j1939decode_version_number(void)
 {
-    TEST_ASSERT_EQUAL_STRING("1.0.1", j1939_version());
+    TEST_ASSERT_EQUAL_STRING("2.0.0", j1939_version());
 }
 
 void test_j1939decode_return_not_null(void)
