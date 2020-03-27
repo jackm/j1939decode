@@ -11,7 +11,7 @@ extern "C" {
 /* Project version */
 #define J1939_DECODE_VERSION_MAJOR 2
 #define J1939_DECODE_VERSION_MINOR 0
-#define J1939_DECODE_VERSION_PATCH 0
+#define J1939_DECODE_VERSION_PATCH 1
 
 /* J1939 digital annex JSON filename */
 #define J1939DB "J1939db.json"
