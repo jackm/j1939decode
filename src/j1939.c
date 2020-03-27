@@ -378,6 +378,11 @@ char * j1939_decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, boo
         goto end;
     }
 
+    if (cJSON_AddNumberToObject(json_object, "ID", id) == NULL)
+    {
+        goto end;
+    }
+
     if (cJSON_AddNumberToObject(json_object, "Priority", get_pri(id)) == NULL)
     {
         goto end;
