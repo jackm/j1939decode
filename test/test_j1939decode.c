@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdlib.h>
 
 #include "unity.h"
@@ -8,20 +9,33 @@
 #include "cJSON.h"
 #include "file.h"
 
-static j1939_header_t header;
+
+static uint8_t pri;
+static uint32_t pgn;
+static uint8_t sa;
+static uint8_t dlc;
 static uint8_t data[8];
+
+/* Compile CAN ID from J1939 sub fields */
+static inline uint32_t get_id(uint8_t pri, uint32_t pgn, uint8_t sa)
+{
+    return (uint32_t) (
+        ((pri & ((1U <<  3U) - 1)) << (18U + 8U)) +
+        ((pgn & ((1U << 18U) - 1)) << 8U) +
+        ((sa  & ((1U <<  8U) - 1)) << 0U)
+    );
+}
+
 
 void setUp(void)
 {
     j1939_init();
 
-    /* Default header and data values */
-    header = (j1939_header_t) {
-            .pri = 0,
-            .pgn = 0,
-            .sa = 0,
-            .dlc = 8,
-    };
+    /* Default values */
+    pri = 0;
+    pgn = 0;
+    sa = 0;
+    dlc = 8;
     for (int i = 0; i < sizeof(data); i++)
     {
         data[i] = 0xFF;
@@ -41,12 +55,12 @@ void test_j1939decode_version_number(void)
 void test_j1939decode_return_not_null(void)
 {
     /* If message can be converted to JSON, j1939_decode_to_json() will return non-null pointer */
-    TEST_ASSERT_NOT_NULL(j1939_decode_to_json(&header, (uint64_t *) data, 0));
+    TEST_ASSERT_NOT_NULL(j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false));
 }
 
 void test_j1939decode_return_parsable_json(void)
 {
-    char * json_string = j1939_decode_to_json(&header, (uint64_t *) data, 0);
+    char * json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
     cJSON * json = cJSON_Parse(json_string);
 
     /* If JSON string can be parsed, cJSON_Parse() will return non-null pointer */
@@ -59,9 +73,9 @@ void test_j1939decode_return_parsable_json(void)
 void test_j1939decode_message_decoded_true(void)
 {
     /* Set to any real PGN that exists in J1939 database */
-    header.pgn = 0;
+    pgn = 0;
 
-    char * json_string = j1939_decode_to_json(&header, (uint64_t *) data, 0);
+    char * json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
     cJSON * json = cJSON_Parse(json_string);
 
     char * item_string = cJSON_Print(cJSON_GetObjectItemCaseSensitive(json, "Decoded"));
@@ -77,9 +91,9 @@ void test_j1939decode_message_decoded_true(void)
 void test_j1939decode_message_decoded_false(void)
 {
     /* PGN 1 does not exist in J1939 database */
-    header.pgn = 1;
+    pgn = 1;
 
-    char * json_string = j1939_decode_to_json(&header, (uint64_t *) data, 0);
+    char * json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
     cJSON * json = cJSON_Parse(json_string);
 
     char * item_string = cJSON_Print(cJSON_GetObjectItemCaseSensitive(json, "Decoded"));
@@ -104,7 +118,7 @@ void test_j1939decode_message_data_raw(void)
     data[6] = 77;
     data[7] = 88;
 
-    char * json_string = j1939_decode_to_json(&header, (uint64_t *) data, 0);
+    char * json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
     cJSON * json = cJSON_Parse(json_string);
 
     char * item_string = cJSON_Print(cJSON_GetObjectItemCaseSensitive(json, "DataRaw"));
@@ -122,11 +136,11 @@ void test_j1939decode_message_sa_reserved(void)
     char * json_string;
     cJSON * json;
 
-    for(int sa = 92; sa <= 127; sa++)
+    for(int i = 92; i <= 127; i++)
     {
-        header.sa = sa;
+        sa = i;
 
-        json_string = j1939_decode_to_json(&header, (uint64_t *) data, 0);
+        json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
         json = cJSON_Parse(json_string);
 
         /* "SAName" key should be set to "Reserved" if SA is between 92 through to 127 inclusive */
@@ -142,11 +156,11 @@ void test_j1939decode_message_sa_industry_group_specific(void)
     char * json_string;
     cJSON * json;
 
-    for(int sa = 128; sa <= 247; sa++)
+    for(int i = 128; i <= 247; i++)
     {
-        header.sa = sa;
+        sa = i;
 
-        json_string = j1939_decode_to_json(&header, (uint64_t *) data, 0);
+        json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
         json = cJSON_Parse(json_string);
 
         /* "SAName" key should be set to "Industry Group specific" if SA is between 128 through to 247 inclusive */
