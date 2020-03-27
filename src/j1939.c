@@ -17,6 +17,22 @@ static cJSON * extract_spn_data(uint32_t spn, const uint64_t * data, uint32_t st
 static char * get_sa_name(uint8_t sa);
 static char * get_pgn_name(uint32_t pgn);
 
+/* Extract J1939 sub fields from CAN ID */
+static inline uint8_t get_pri(uint32_t id)
+{
+    /* 3-bit priority */
+    return (uint8_t) ((id >> (18U + 8U)) & ((1U << 3U) - 1));
+}
+static inline uint32_t get_pgn(uint32_t id)
+{
+    /* 18-bit parameter group number */
+    return (uint32_t) ((id >> 8U) & ((1U << 18U) - 1));
+}
+static inline uint8_t get_sa(uint32_t id)
+{
+    /* 8-bit source address */
+    return (uint8_t) ((id >> 0U) & ((1U << 8U) - 1));
+}
 
 /**************************************************************************//**
 
@@ -328,20 +344,27 @@ char * get_pgn_name(uint32_t pgn)
 
   \brief Build JSON string for j1939 decoded data
 
-  \param header     pointer to the j1939_header struct
+  \param id         CAN identifier
+  \param dlc        data length code
   \param data       pointer to data (8 bytes total)
   \param pretty     pretty print returned JSON string
 
   \return char *    pointer to the JSON string
 
 ******************************************************************************/
-char * j1939_decode_to_json(j1939_header_t * header, const uint64_t * data, uint8_t pretty)
+char * j1939_decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, bool pretty)
 {
     /* Fail and return NULL if database is not loaded
      * Remember to call j1939_init() first! */
     if (j1939db_json == NULL)
     {
         fprintf(stderr, "J1939 database not loaded\n");
+        return NULL;
+    }
+
+    if (dlc > 8)
+    {
+        fprintf(stderr, "DLC cannot be greater than 8 bytes\n");
         return NULL;
     }
 
@@ -355,27 +378,27 @@ char * j1939_decode_to_json(j1939_header_t * header, const uint64_t * data, uint
         goto end;
     }
 
-    if (cJSON_AddNumberToObject(json_object, "Priority", header->pri) == NULL)
+    if (cJSON_AddNumberToObject(json_object, "Priority", get_pri(id)) == NULL)
     {
         goto end;
     }
 
-    if (cJSON_AddNumberToObject(json_object, "PGN", header->pgn) == NULL)
+    if (cJSON_AddNumberToObject(json_object, "PGN", get_pgn(id)) == NULL)
     {
         goto end;
     }
 
-    if (cJSON_AddNumberToObject(json_object, "SA", header->sa) == NULL)
+    if (cJSON_AddNumberToObject(json_object, "SA", get_sa(id)) == NULL)
     {
         goto end;
     }
 
-    if (cJSON_AddStringToObject(json_object, "SAName", get_sa_name(header->sa)) == NULL)
+    if (cJSON_AddStringToObject(json_object, "SAName", get_sa_name(get_sa(id))) == NULL)
     {
         goto end;
     }
 
-    if (cJSON_AddNumberToObject(json_object, "DLC", header->dlc) == NULL)
+    if (cJSON_AddNumberToObject(json_object, "DLC", dlc) == NULL)
     {
         goto end;
     }
@@ -384,7 +407,7 @@ char * j1939_decode_to_json(j1939_header_t * header, const uint64_t * data, uint
     cJSON_AddItemToObject(json_object, "DataRaw", create_byte_array(data));
 
     /* JSON object for specific PGN data */
-    const cJSON * pgn_data = get_pgn_data(header->pgn);
+    const cJSON * pgn_data = get_pgn_data(get_pgn(id));
 
     /* Decoded flag default to false until set otherwise */
     cJSON_bool decoded_flag = false;
@@ -393,7 +416,7 @@ char * j1939_decode_to_json(j1939_header_t * header, const uint64_t * data, uint
     {
         /* PGN number found in lookup table */
 
-        if (cJSON_AddStringToObject(json_object, "PGNName", get_pgn_name(header->pgn)) == NULL)
+        if (cJSON_AddStringToObject(json_object, "PGNName", get_pgn_name(get_pgn(id))) == NULL)
         {
             goto end;
         }
@@ -462,12 +485,12 @@ char * j1939_decode_to_json(j1939_header_t * header, const uint64_t * data, uint
             }
             else
             {
-                fprintf(stderr, "Empty SPN list found in database for PGN %d\n", header->pgn);
+                fprintf(stderr, "Empty SPN list found in database for PGN %d\n", get_pgn(id));
             }
         }
         else
         {
-            fprintf(stderr, "No SPNs found in database for PGN %d\n", header->pgn);
+            fprintf(stderr, "No SPNs found in database for PGN %d\n", get_pgn(id));
         }
 
         /* Add SPN list object to the main JSON object */
@@ -476,7 +499,7 @@ char * j1939_decode_to_json(j1939_header_t * header, const uint64_t * data, uint
     else
     {
         /* TODO: This print may happen too often when trying to decode non-J1939 data */
-        /* fprintf(stderr, "PGN %d not found in database\n", header->pgn); */
+        /* fprintf(stderr, "PGN %d not found in database\n", get_pgn(id)); */
     }
 
     if (cJSON_AddBoolToObject(json_object, "Decoded", decoded_flag) == NULL)

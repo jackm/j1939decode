@@ -6,19 +6,12 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /* Project version */
 #define J1939_DECODE_VERSION_MAJOR 1
 #define J1939_DECODE_VERSION_MINOR 0
 #define J1939_DECODE_VERSION_PATCH 1
-
-typedef struct _j1939_header
-{
-    uint8_t pri;        /* Priority (3 bits) */
-    uint32_t pgn;       /* Parameter group number (18 bits) */
-    uint8_t sa;         /* Source address (8 bits) */
-    uint8_t dlc;        /* Data length code (8 bits) */
-} j1939_header_t;
 
 /* J1939 digital annex JSON filename */
 #define J1939DB "J1939db.json"
@@ -64,7 +57,7 @@ void j1939_deinit(void);
 	"Decoded":	true
 }
  */
-char * j1939_decode_to_json(j1939_header_t * header, const uint64_t * data, uint8_t pretty);
+char * j1939_decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, bool pretty);
 
 #ifdef __cplusplus
 }
