@@ -1,12 +1,12 @@
 # J1939 decode library
 
-This repository builds j1939decode as a separate library.
+Decode J1939 CAN bus messages into a JSON string representation of what the payload data means based on the SAE standard.
 
 This library by default will attempt to read the file `J1939db.json` from the current directory to load in the J1939 database.
 If this file cannot be read, J1939 decoding will not be possible.
 This file name and path can changed by redefining the `J1939DB` C macro to point to a different filename.
 
-See below for how to generate the J1939 database file.
+***See below for how to generate the J1939 database file.***
 
 ## Building
 
@@ -16,7 +16,7 @@ Create a build directory relative to project root, run cmake and then make.
 mkdir -p build
 cd build
 cmake ..
-make
+make -j
 ```
 
 ## Cleaning
@@ -37,16 +37,11 @@ Unit tests make use of the [Unity testing framework](http://www.throwtheswitch.o
 
 To start all tests run `ceedling test:all`.
 
-## How to link in a Makefile
-
-1. Include the compiler flag `-I/usr/local/include/j1939decode`
-1. Include the compiler flag `-L/usr/local/lib`
-1. Add the linker flag `-lj1939decode`
-
 ## Library usage
 
 Call `j1939_init()` first before calling `j1939_decode_to_json()`.
-When done, call `j1939_deinit()` to free memory allocated by `j1939_init()`.
+
+When done, call `j1939_deinit()` to free memory allocated by `j1939_init()` and free the string pointer returned by `j1939_decode_to_json()`.
 
 ## J1939 database file generation
 
