@@ -16,6 +16,12 @@ extern "C" {
 /* J1939 digital annex JSON filename */
 #define J1939DB "J1939db.json"
 
+/* Log function pointer type */
+typedef void (*log_fn_ptr)(const char *);
+
+/* Set log function handler */
+void j1939_set_log_fn(log_fn_ptr fn);
+
 /* Print version string */
 const char * j1939_version(void);
 

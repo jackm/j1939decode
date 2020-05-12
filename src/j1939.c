@@ -1,15 +1,20 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include "j1939.h"
 #include "cJSON.h"
 #include "file.h"
 
+/* Log function pointer */
+static log_fn_ptr log_fn = NULL;
+
 /* J1939 lookup table pointer */
 static cJSON * j1939db_json = NULL;
 
 /* Static helper functions */
+static void log_msg(const char * fmt, ...);
 static cJSON * create_byte_array(const uint64_t * data);
 static const cJSON * get_pgn_data(uint32_t pgn);
 static const cJSON * get_spn_data(uint32_t spn);
@@ -32,6 +37,47 @@ static inline uint8_t get_sa(uint32_t id)
 {
     /* 8-bit source address */
     return (uint8_t) ((id >> 0U) & ((1U << 8U) - 1));
+}
+
+/**************************************************************************//**
+
+  \brief Log formatted message to user defined handler, or stderr as default
+
+  \return void
+
+******************************************************************************/
+void log_msg(const char * fmt, ...)
+{
+    char buf[4096];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+
+    if (log_fn)
+    {
+        (*log_fn)(buf);
+    }
+    else
+    {
+        /* Default print to stderr */
+        fprintf(stderr, "%s\n", buf);
+    }
+}
+
+/**************************************************************************//**
+
+  \brief Set log function handler
+
+  \return void
+
+******************************************************************************/
+void j1939_set_log_fn(log_fn_ptr fn)
+{
+    if (fn)
+    {
+        log_fn = fn;
+    }
 }
 
 /**************************************************************************//**
@@ -67,7 +113,7 @@ void j1939_init(void)
         free(s);
         if (j1939db_json == NULL)
         {
-            fprintf(stderr, "Unable to parse J1939db\n");
+            log_msg("Unable to parse J1939db");
         }
     }
 }
@@ -254,7 +300,7 @@ cJSON * extract_spn_data(uint32_t spn, const uint64_t * data, uint32_t start_bit
     }
     else
     {
-        fprintf(stderr, "No SPN data found in database for SPN %d\n", spn);
+        log_msg("No SPN data found in database for SPN %d", spn);
         goto cleanup;
     }
 
@@ -301,7 +347,7 @@ char * get_sa_name(uint8_t sa)
             if (sa_name == NULL)
             {
                 sa_name = "Unknown";
-                fprintf(stderr, "No source address name found in database for source address %d\n", sa);
+                log_msg("No source address name found in database for source address %d", sa);
             }
         }
     }
@@ -313,7 +359,7 @@ char * get_sa_name(uint8_t sa)
     else
     {
         sa_name = "Unknown";
-        fprintf(stderr, "Unknown source address %d outside of expected range\n", sa);
+        log_msg("Unknown source address %d outside of expected range", sa);
     }
 
     return sa_name;
@@ -334,7 +380,7 @@ char * get_pgn_name(uint32_t pgn)
     if (pgn_name == NULL)
     {
         pgn_name = "Unknown";
-        fprintf(stderr, "No PGN name found in database for PGN %d\n", pgn);
+        log_msg("No PGN name found in database for PGN %d", pgn);
     }
 
     return pgn_name;
@@ -358,13 +404,13 @@ char * j1939_decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, boo
      * Remember to call j1939_init() first! */
     if (j1939db_json == NULL)
     {
-        fprintf(stderr, "J1939 database not loaded\n");
+        log_msg("J1939 database not loaded");
         return NULL;
     }
 
     if (dlc > 8)
     {
-        fprintf(stderr, "DLC cannot be greater than 8 bytes\n");
+        log_msg("DLC cannot be greater than 8 bytes");
         return NULL;
     }
 
@@ -454,7 +500,7 @@ char * j1939_decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, boo
                     {
                         if (start_bit_json->valueint < 0)
                         {
-                            fprintf(stderr, "Start bit cannot be negative for SPN %d, skipping decode\n", spn_number);
+                            log_msg("Start bit cannot be negative for SPN %d, skipping decode", spn_number);
                             continue;
                         }
 
@@ -463,7 +509,7 @@ char * j1939_decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, boo
                     }
                     else
                     {
-                        fprintf(stderr, "No start bit found in database for SPN %d, skipping decode\n", spn_number);
+                        log_msg("No start bit found in database for SPN %d, skipping decode", spn_number);
                         continue;
                     }
 
@@ -490,12 +536,12 @@ char * j1939_decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, boo
             }
             else
             {
-                fprintf(stderr, "Empty SPN list found in database for PGN %d\n", get_pgn(id));
+                log_msg("Empty SPN list found in database for PGN %d", get_pgn(id));
             }
         }
         else
         {
-            fprintf(stderr, "No SPNs found in database for PGN %d\n", get_pgn(id));
+            log_msg("No SPNs found in database for PGN %d", get_pgn(id));
         }
 
         /* Add SPN list object to the main JSON object */
@@ -504,7 +550,7 @@ char * j1939_decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, boo
     else
     {
         /* TODO: This print may happen too often when trying to decode non-J1939 data */
-        /* fprintf(stderr, "PGN %d not found in database\n", get_pgn(id)); */
+        /* log_msg("PGN %d not found in database", get_pgn(id)); */
     }
 
     if (cJSON_AddBoolToObject(json_object, "Decoded", decoded_flag) == NULL)
@@ -517,7 +563,7 @@ char * j1939_decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, boo
     json_string = pretty ? cJSON_Print(json_object) : cJSON_PrintUnformatted(json_object);
     if (json_string == NULL)
     {
-        fprintf(stderr, "Failed to print JSON string\n");
+        log_msg("Failed to print JSON string");
     }
 
     end:
