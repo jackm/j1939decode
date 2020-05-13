@@ -39,9 +39,22 @@ To start all tests run `ceedling test:all`.
 
 ## Library usage
 
-Call `j1939decode_init()` first before calling `j1939decode_to_json()`.
+Call `j1939decode_init()` first _before_ calling `j1939decode_to_json()`.
 
-When done, call `j1939decode_deinit()` to free memory allocated by `j1939decode_init()` and free the string pointer returned by `j1939decode_to_json()`.
+When done, call `j1939decode_deinit()` to free memory allocated by `j1939decode_init()` and also remember to free the string pointer returned by `j1939decode_to_json()`.
+
+### User-supplied log handler
+
+`j1939decode_set_log_fn()` can be used to set a user-supplied log handler function.
+`j1939decode_set_log_fn()` should be called _before_ calling `j1939decode_init()` since library initialization may generate log messages.
+
+The replacement log handler should have the following signature:
+
+```c
+void custom_log_handler(const char * msg);
+```
+
+If NULL is supplied for j1939decode_set_log_fn or it is not called at all, then the default logger function will be used, which prints all log messages to stderr.
 
 ## J1939 database file generation
 
