@@ -3,11 +3,10 @@
 
 #include "unity.h"
 
-#include "j1939.h"
+#include "j1939decode.h"
 
 /* Need to re-include these because Ceedling doesn't find them even though they are in j1939.c? */
 #include "cJSON.h"
-#include "file.h"
 
 
 static uint8_t pri;
@@ -29,7 +28,7 @@ static inline uint32_t get_id(uint8_t pri, uint32_t pgn, uint8_t sa)
 
 void setUp(void)
 {
-    j1939_init();
+    j1939decode_init();
 
     /* Default values */
     pri = 0;
@@ -44,23 +43,23 @@ void setUp(void)
 
 void tearDown(void)
 {
-    j1939_deinit();
+    j1939decode_deinit();
 }
 
 void test_j1939decode_version_number(void)
 {
-    TEST_ASSERT_EQUAL_STRING("2.0.1", j1939_version());
+    TEST_ASSERT_EQUAL_STRING("3.0.0", j1939decode_version());
 }
 
 void test_j1939decode_return_not_null(void)
 {
-    /* If message can be converted to JSON, j1939_decode_to_json() will return non-null pointer */
-    TEST_ASSERT_NOT_NULL(j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false));
+    /* If message can be converted to JSON, j1939decode_to_json() will return non-null pointer */
+    TEST_ASSERT_NOT_NULL(j1939decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false));
 }
 
 void test_j1939decode_return_parsable_json(void)
 {
-    char * json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
+    char * json_string = j1939decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
     cJSON * json = cJSON_Parse(json_string);
 
     /* If JSON string can be parsed, cJSON_Parse() will return non-null pointer */
@@ -75,7 +74,7 @@ void test_j1939decode_message_decoded_true(void)
     /* Set to any real PGN that exists in J1939 database */
     pgn = 0;
 
-    char * json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
+    char * json_string = j1939decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
     cJSON * json = cJSON_Parse(json_string);
 
     char * item_string = cJSON_Print(cJSON_GetObjectItemCaseSensitive(json, "Decoded"));
@@ -93,7 +92,7 @@ void test_j1939decode_message_decoded_false(void)
     /* PGN 1 does not exist in J1939 database */
     pgn = 1;
 
-    char * json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
+    char * json_string = j1939decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
     cJSON * json = cJSON_Parse(json_string);
 
     char * item_string = cJSON_Print(cJSON_GetObjectItemCaseSensitive(json, "Decoded"));
@@ -118,7 +117,7 @@ void test_j1939decode_message_data_raw(void)
     data[6] = 77;
     data[7] = 88;
 
-    char * json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
+    char * json_string = j1939decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
     cJSON * json = cJSON_Parse(json_string);
 
     char * item_string = cJSON_Print(cJSON_GetObjectItemCaseSensitive(json, "DataRaw"));
@@ -140,7 +139,7 @@ void test_j1939decode_message_sa_reserved(void)
     {
         sa = i;
 
-        json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
+        json_string = j1939decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
         json = cJSON_Parse(json_string);
 
         /* "SAName" key should be set to "Reserved" if SA is between 92 through to 127 inclusive */
@@ -160,7 +159,7 @@ void test_j1939decode_message_sa_industry_group_specific(void)
     {
         sa = i;
 
-        json_string = j1939_decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
+        json_string = j1939decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
         json = cJSON_Parse(json_string);
 
         /* "SAName" key should be set to "Industry Group specific" if SA is between 128 through to 247 inclusive */
