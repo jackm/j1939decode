@@ -1,7 +1,6 @@
 set(SOURCES
         j1939.c j1939.h
         cJSON.c cJSON.h
-        file.c file.h
         )
 
 add_library(${STATIC_LIB} STATIC ${SOURCES})

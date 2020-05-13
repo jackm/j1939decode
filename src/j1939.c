@@ -5,7 +5,6 @@
 
 #include "j1939.h"
 #include "cJSON.h"
-#include "file.h"
 
 /* Log function pointer */
 static log_fn_ptr log_fn = NULL;
@@ -15,6 +14,7 @@ static cJSON * j1939db_json = NULL;
 
 /* Static helper functions */
 static void log_msg(const char * fmt, ...);
+static char * file_read(const char * filename, const char * mode);
 static cJSON * create_byte_array(const uint64_t * data);
 static const cJSON * get_pgn_data(uint32_t pgn);
 static const cJSON * get_spn_data(uint32_t spn);
@@ -63,6 +63,50 @@ void log_msg(const char * fmt, ...)
         /* Default print to stderr */
         fprintf(stderr, "%s\n", buf);
     }
+}
+
+/**************************************************************************//**
+
+  \brief  Read file contents into allocated memory
+
+  \return pointer to string containing file contents
+
+******************************************************************************/
+char * file_read(const char * filename, const char * mode)
+{
+    FILE * fp = fopen(filename, mode);
+    if (fp == NULL)
+    {
+        log_msg("Could not open file %s", filename);
+        /* No need to close the file before returning since it was never opened */
+        return NULL;
+    }
+
+    /* Get total file size */
+    fseek(fp, 0, SEEK_END);
+    long file_size = ftell(fp);
+    rewind(fp);
+
+    /* Allocate enough memory for entire file */
+    char * buf = malloc(file_size);
+    if (buf == NULL)
+    {
+        log_msg("Memory allocation failure");
+        fclose(fp);
+        return NULL;
+    }
+
+    /* Read the entire file into a buffer */
+    long read_size = fread(buf, 1, file_size, fp);
+    if (read_size != file_size)
+    {
+        log_msg("Read %ld of %ld total bytes in file %s", read_size, file_size, filename);
+        fclose(fp);
+        return NULL;
+    }
+
+    fclose(fp);
+    return buf;
 }
 
 /**************************************************************************//**
