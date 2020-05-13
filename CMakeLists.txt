@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.1.0)
 
 # Parse the current version from the version header
-file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/src/j1939.h" version_defines
-        REGEX "#define J1939_DECODE_VERSION_(MAJOR|MINOR|PATCH)")
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/src/j1939decode.h" version_defines
+        REGEX "#define J1939DECODE_VERSION_(MAJOR|MINOR|PATCH)")
 foreach(ver ${version_defines})
-    if(ver MATCHES "#define J1939_DECODE_VERSION_(MAJOR|MINOR|PATCH) +([^ ]+)$")
+    if(ver MATCHES "#define J1939DECODE_VERSION_(MAJOR|MINOR|PATCH) +([^ ]+)$")
         set(VERSION_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}" CACHE INTERNAL "")
     endif()
 endforeach()

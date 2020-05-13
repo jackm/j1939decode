@@ -1,5 +1,5 @@
 set(SOURCES
-        j1939.c j1939.h
+        j1939decode.c j1939decode.h
         cJSON.c cJSON.h
         )
 
@@ -18,6 +18,6 @@ install(TARGETS ${SHARED_LIB}
         LIBRARY DESTINATION lib)
 
 # Install headers
-set(HEADERS j1939.h)
+set(HEADERS j1939decode.h)
 set(HEADER_PATH ${CMAKE_PROJECT_NAME})
 install(FILES ${HEADERS} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${HEADER_PATH})

@@ -1,5 +1,5 @@
-#ifndef J1939_H
-#define J1939_H
+#ifndef J1939DECODE_H
+#define J1939DECODE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,27 +9,27 @@ extern "C" {
 #include <stdbool.h>
 
 /* Project version */
-#define J1939_DECODE_VERSION_MAJOR 2
-#define J1939_DECODE_VERSION_MINOR 0
-#define J1939_DECODE_VERSION_PATCH 1
+#define J1939DECODE_VERSION_MAJOR 2
+#define J1939DECODE_VERSION_MINOR 0
+#define J1939DECODE_VERSION_PATCH 1
 
 /* J1939 digital annex JSON filename */
-#define J1939DB "J1939db.json"
+#define J1939DECODE_DB "J1939db.json"
 
 /* Log function pointer type */
 typedef void (*log_fn_ptr)(const char *);
 
 /* Set log function handler */
-void j1939_set_log_fn(log_fn_ptr fn);
+void j1939decode_set_log_fn(log_fn_ptr fn);
 
 /* Print version string */
-const char * j1939_version(void);
+const char * j1939decode_version(void);
 
 /* Initialize and allocate memory for J1939 lookup table */
-void j1939_init(void);
+void j1939decode_init(void);
 
 /* Deinitialize and free memory for J1939 lookup table */
-void j1939_deinit(void);
+void j1939decode_deinit(void);
 
 /* Build JSON string for j1939 decoded data
  * Memory will be allocated so remember to free the string when you are done with it! */
@@ -64,10 +64,10 @@ void j1939_deinit(void);
 	"Decoded":	true
 }
  */
-char * j1939_decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, bool pretty);
+char * j1939decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, bool pretty);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif //J1939_H
+#endif //J1939DECODE_H

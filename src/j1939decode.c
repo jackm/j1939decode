@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#include "j1939.h"
+#include "j1939decode.h"
 #include "cJSON.h"
 
 /* Log function pointer */
@@ -116,7 +116,7 @@ char * file_read(const char * filename, const char * mode)
   \return void
 
 ******************************************************************************/
-void j1939_set_log_fn(log_fn_ptr fn)
+void j1939decode_set_log_fn(log_fn_ptr fn)
 {
     if (fn)
     {
@@ -131,10 +131,10 @@ void j1939_set_log_fn(log_fn_ptr fn)
   \return version string
 
 ******************************************************************************/
-const char * j1939_version(void)
+const char * j1939decode_version(void)
 {
     static char version[15];
-    sprintf(version, "%i.%i.%i", J1939_DECODE_VERSION_MAJOR, J1939_DECODE_VERSION_MINOR, J1939_DECODE_VERSION_PATCH);
+    sprintf(version, "%i.%i.%i", J1939DECODE_VERSION_MAJOR, J1939DECODE_VERSION_MINOR, J1939DECODE_VERSION_PATCH);
 
     return version;
 }
@@ -146,11 +146,11 @@ const char * j1939_version(void)
   \return void
 
 ******************************************************************************/
-void j1939_init(void)
+void j1939decode_init(void)
 {
     char * s;
     /* Memory-map all file contents */
-    s = file_read(J1939DB, "r");
+    s = file_read(J1939DECODE_DB, "r");
     if (s != NULL)
     {
         j1939db_json = cJSON_Parse(s);
@@ -169,7 +169,7 @@ void j1939_init(void)
   \return void
 
 ******************************************************************************/
-void j1939_deinit(void)
+void j1939decode_deinit(void)
 {
     /* cJSON_Delete() checks if pointer is NULL before freeing */
     cJSON_Delete(j1939db_json);
@@ -442,10 +442,10 @@ char * get_pgn_name(uint32_t pgn)
   \return char *    pointer to the JSON string
 
 ******************************************************************************/
-char * j1939_decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, bool pretty)
+char * j1939decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, bool pretty)
 {
     /* Fail and return NULL if database is not loaded
-     * Remember to call j1939_init() first! */
+     * Remember to call j1939decode_init() first! */
     if (j1939db_json == NULL)
     {
         log_msg("J1939 database not loaded");
