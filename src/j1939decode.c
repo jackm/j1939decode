@@ -371,7 +371,7 @@ char * get_sa_name(uint8_t sa)
     char * sa_name;
 
     /* Preferred Addresses are in the range of 0 to 127 and 248 to 255 */
-    if ((sa >= 0 && sa <= 127) || (sa >= 248 && sa <= 255))
+    if (sa <= 127 || sa >= 248)
     {
         /* Source addresses 92 through to 127 have not yet been assigned */
         if (sa >= 92 && sa <= 127)
