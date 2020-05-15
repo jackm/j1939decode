@@ -88,7 +88,7 @@ char * file_read(const char * filename, const char * mode)
     rewind(fp);
 
     /* Allocate enough memory for entire file */
-    char * buf = malloc(file_size);
+    char * buf = malloc(file_size + 1);
     if (buf == NULL)
     {
         log_msg("Memory allocation failure");
@@ -106,6 +106,10 @@ char * file_read(const char * filename, const char * mode)
     }
 
     fclose(fp);
+
+    // Null terminator
+    buf[file_size] = '\0';
+
     return buf;
 }
 
