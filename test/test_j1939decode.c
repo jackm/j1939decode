@@ -1,11 +1,10 @@
+#include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
 #include "unity.h"
 
 #include "j1939decode.h"
-
-/* Need to re-include these because Ceedling doesn't find them even though they are in j1939.c? */
 #include "cJSON.h"
 
 
@@ -48,7 +47,7 @@ void tearDown(void)
 
 void test_j1939decode_version_number(void)
 {
-    TEST_ASSERT_EQUAL_STRING("3.0.0", j1939decode_version());
+    TEST_ASSERT_EQUAL_STRING("3.1.0", j1939decode_version());
 }
 
 void test_j1939decode_return_not_null(void)
