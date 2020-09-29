@@ -34,7 +34,7 @@ void setUp(void)
     pgn = 0;
     sa = 0;
     dlc = 8;
-    for (int i = 0; i < sizeof(data); i++)
+    for (size_t i = 0; i < sizeof(data); i++)
     {
         data[i] = 0xFF;
     }
@@ -123,6 +123,24 @@ void test_j1939decode_message_data_raw(void)
 
     /* "DataRaw" key should be the same as the raw message data bytes */
     TEST_ASSERT_EQUAL_STRING("[11, 22, 33, 44, 55, 66, 77, 88]", item_string);
+
+    free(item_string);
+    cJSON_Delete(json);
+    free(json_string);
+}
+
+void test_j1939decode_message_proprietary_pgn(void)
+{
+    /* PGN 65280 is a proprietary PGN for manufacturer defined usage */
+    pgn = 65280;
+
+    char * json_string = j1939decode_to_json(get_id(pri, pgn, sa), dlc, (uint64_t *) data, false);
+    cJSON * json = cJSON_Parse(json_string);
+
+    char * item_string = cJSON_Print(cJSON_GetObjectItemCaseSensitive(json, "Decoded"));
+
+    /* "Decoded" key should be false when given a proprietary PGN */
+    TEST_ASSERT_EQUAL_STRING("false", item_string);
 
     free(item_string);
     cJSON_Delete(json);

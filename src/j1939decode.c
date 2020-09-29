@@ -15,6 +15,7 @@ static cJSON * j1939db_json = NULL;
 /* Static helper functions */
 static void log_msg(const char * fmt, ...);
 static char * file_read(const char * filename, const char * mode);
+static bool in_array(uint32_t val, const uint32_t * array, size_t len);
 static cJSON * create_byte_array(const uint64_t * data);
 static const cJSON * get_pgn_data(uint32_t pgn);
 static const cJSON * get_spn_data(uint32_t spn);
@@ -180,6 +181,29 @@ void j1939decode_deinit(void)
 
     /* Explicitly set pointer to NULL */
     j1939db_json = NULL;
+}
+
+/**************************************************************************//**
+
+  \brief
+
+  \param val    value to search
+  \param array  array of values to search in
+  \param len    number of elements in array
+
+  \return bool  boolean indicating if value was found in array
+
+******************************************************************************/
+bool in_array(uint32_t val, const uint32_t * array, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+    {
+        if (val == array[i])
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 /**************************************************************************//**
@@ -541,45 +565,57 @@ char * j1939decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, bool
                     /* Getting SPN number from SPN list in PGN since the SPN number is used as a key only and not included in the SPN data object itself */
                     uint32_t spn_number = (uint32_t) cJSON_GetArrayItem(spn_list_array, i)->valueint;
 
-                    /* Need to pass SPN starting bit position since it is found in the PGN data object */
-                    uint32_t start_bit;
-                    const cJSON * start_bit_json = cJSON_GetArrayItem(cJSON_GetObjectItemCaseSensitive(pgn_data, "SPNStartBits"), i);
-                    if (cJSON_IsNumber(start_bit_json))
-                    {
-                        if (start_bit_json->valueint < 0)
-                        {
-                            log_msg("Start bit cannot be negative for SPN %d, skipping decode", spn_number);
-                            continue;
-                        }
+                    /* Array of all possible proprietary SPNs */
+                    const uint32_t proprietary_spns[] = {2550, 2551, 3328};
 
-                        /* Now cast to unsigned */
-                        start_bit = (uint32_t) start_bit_json->valueint;
+                    /* Check for proprietary SPNs */
+                    if (in_array(spn_number, proprietary_spns, sizeof(proprietary_spns) / sizeof(proprietary_spns[0])))
+                    {
+                        /* TODO: Disabling print to silently ignore proprietary SPNs */
+                        /* log_msg("Skipping decode for proprietary SPN %d", spn_number); */
                     }
                     else
                     {
-                        log_msg("No start bit found in database for SPN %d, skipping decode", spn_number);
-                        continue;
+                        /* Need to pass SPN starting bit position since it is found in the PGN data object */
+                        uint32_t start_bit;
+                        const cJSON * start_bit_json = cJSON_GetArrayItem(cJSON_GetObjectItemCaseSensitive(pgn_data, "SPNStartBits"), i);
+                        if (cJSON_IsNumber(start_bit_json))
+                        {
+                            if (start_bit_json->valueint < 0)
+                            {
+                                log_msg("Start bit cannot be negative for SPN %d, skipping decode", spn_number);
+                                continue;
+                            }
+
+                            /* Now cast to unsigned */
+                            start_bit = (uint32_t) start_bit_json->valueint;
+                        }
+                        else
+                        {
+                            log_msg("No start bit found in database for SPN %d, skipping decode", spn_number);
+                            continue;
+                        }
+
+                        /* Add SPN data object to SPN list object using SPN number as a key */
+                        char spn_string[7];
+                        snprintf(spn_string, sizeof(spn_string), "%d", spn_number);
+
+                        cJSON * spn_data = extract_spn_data(spn_number, data, start_bit);
+                        if (spn_data != NULL)
+                        {
+                            /* At least one SPN found in database and actually decoded */
+
+                            /* TODO: What criteria should be used to determine if the message should be flagged as "decoded" or not?
+                             * 1. If PGN data found in database?
+                             * 2. If at least one SPN found in database for PGN?
+                             * 3. If at least one SPN, with start bits, found in database for PGN?
+                             * 4. If at least one SPN actually decoded? (i.e. extract_spn_data() did not return NULL)
+                             * Using #4 criteria for now */
+
+                            decoded_flag = true;
+                        }
+                        cJSON_AddItemToObject(spn_object, spn_string, spn_data);
                     }
-
-                    /* Add SPN data object to SPN list object using SPN number as a key */
-                    char spn_string[7];
-                    snprintf(spn_string, sizeof(spn_string), "%d", spn_number);
-
-                    cJSON * spn_data = extract_spn_data(spn_number, data, start_bit);
-                    if (spn_data != NULL)
-                    {
-                        /* At least one SPN found in database and actually decoded */
-
-                        /* TODO: What criteria should be used to determine if the message should be flagged as "decoded" or not?
-                         * 1. If PGN data found in database?
-                         * 2. If at least one SPN found in database for PGN?
-                         * 3. If at least one SPN, with start bits, found in database for PGN?
-                         * 4. If at least one SPN actually decoded? (i.e. extract_spn_data() did not return NULL)
-                         * Using #4 criteria for now */
-
-                        decoded_flag = true;
-                    }
-                    cJSON_AddItemToObject(spn_object, spn_string, spn_data);
                 }
             }
             else
