@@ -47,7 +47,7 @@ void tearDown(void)
 
 void test_j1939decode_version_number(void)
 {
-    TEST_ASSERT_EQUAL_STRING("3.1.0", j1939decode_version());
+    TEST_ASSERT_EQUAL_STRING("3.1.1", j1939decode_version());
 }
 
 void test_j1939decode_return_not_null(void)
