@@ -12,6 +12,13 @@ static log_fn_ptr log_fn = NULL;
 /* J1939 lookup table pointer */
 static cJSON * j1939db_json = NULL;
 
+/* JSON object for all PGNs */
+static cJSON * j1939db_pgns = NULL;
+/* JSON object for all SPNs */
+static cJSON * j1939db_spns = NULL;
+/* JSON object for all source addresses */
+static cJSON * j1939db_source_addresses = NULL;
+
 /* Static helper functions */
 static void log_msg(const char * fmt, ...);
 static char * file_read(const char * filename, const char * mode);
@@ -165,6 +172,11 @@ void j1939decode_init(void)
             log_msg("Unable to parse J1939db");
         }
     }
+
+    /* Pre-allocate large JSON objects */
+    j1939db_pgns = cJSON_GetObjectItemCaseSensitive(j1939db_json, "J1939PGNdb");
+    j1939db_spns = cJSON_GetObjectItemCaseSensitive(j1939db_json, "J1939SPNdb");
+    j1939db_source_addresses = cJSON_GetObjectItemCaseSensitive(j1939db_json, "J1939SATabledb");
 }
 
 /**************************************************************************//**
@@ -252,14 +264,11 @@ cJSON * create_byte_array(const uint64_t * data)
 ******************************************************************************/
 const cJSON * get_pgn_data(uint32_t pgn)
 {
-    /* JSON object for all PGNs */
-    const cJSON * pgns = cJSON_GetObjectItemCaseSensitive(j1939db_json, "J1939PGNdb");
-
     /* String large enough to fit a six-digit number (18 bits) */
     char pgn_string[7];
     snprintf(pgn_string, sizeof(pgn_string), "%d", pgn);
 
-    const cJSON * pgn_data = cJSON_GetObjectItemCaseSensitive(pgns, pgn_string);
+    const cJSON * pgn_data = cJSON_GetObjectItemCaseSensitive(j1939db_pgns, pgn_string);
 
     return pgn_data;
 }
@@ -275,14 +284,11 @@ const cJSON * get_pgn_data(uint32_t pgn)
 ******************************************************************************/
 const cJSON * get_spn_data(uint32_t spn)
 {
-    /* JSON object for all SPNs */
-    const cJSON * spns = cJSON_GetObjectItemCaseSensitive(j1939db_json, "J1939SPNdb");
-
     /* String large enough to fit a six-digit number */
     char spn_string[7];
     snprintf(spn_string, sizeof(spn_string), "%d", spn);
 
-    const cJSON * spn_data = cJSON_GetObjectItemCaseSensitive(spns, spn_string);
+    const cJSON * spn_data = cJSON_GetObjectItemCaseSensitive(j1939db_spns, spn_string);
 
     return spn_data;
 }
@@ -408,14 +414,11 @@ char * get_sa_name(uint8_t sa)
         }
         else
         {
-            /* JSON object for all source addresses */
-            const cJSON * source_addresses = cJSON_GetObjectItemCaseSensitive(j1939db_json, "J1939SATabledb");
-
             /* String large enough to fit a three-digit number (8 bits) */
             char sa_string[4];
             snprintf(sa_string, sizeof(sa_string), "%d", sa);
 
-            sa_name = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(source_addresses, sa_string));
+            sa_name = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(j1939db_source_addresses, sa_string));
             if (sa_name == NULL)
             {
                 sa_name = "Unknown";
