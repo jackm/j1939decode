@@ -1,7 +1,7 @@
 #include <cstdio>
-//? #include <stdbool.h>
 #include <cstdlib>
 #include <cstdarg>
+#include <algorithm>
 #include <unordered_map>
 
 #include "j1939decode.h"
@@ -17,26 +17,21 @@ static log_fn_ptr log_fn = NULL;
 /* J1939 lookup table pointer */
 static cJSON * j1939db_json = NULL;
 
-/* JSON object for all PGNs */
-//? static cJSON * j1939db_pgns = NULL;
+/* std::unordered_map object for all PGNs */
 std::unordered_map<std::string, PGNData> j1939db_pgns;
-/* JSON object for all SPNs */
-//? static cJSON * j1939db_spns = NULL;
+/* std::unordered_map object for all SPNs */
 std::unordered_map<std::string, SPNData> j1939db_spns;
-/* JSON object for all source addresses */
-//? static cJSON * j1939db_source_addresses = NULL;
+/* std::unordered_map object for all source addresses */
 std::unordered_map<std::string, std::string> j1939db_source_addresses;
 
 /* Static helper functions */
 static void log_msg(const char * fmt, ...);
 static char * file_read(const char * filename, const char * mode);
-static bool in_array(uint32_t val, const uint32_t * array, size_t len);
 static cJSON * create_byte_array(const uint64_t * data);
-static const cJSON * get_pgn_data(uint32_t pgn);
-static const cJSON * get_spn_data(uint32_t spn);
-static cJSON * extract_spn_data(uint32_t spn, const uint64_t * data, uint32_t start_bit);
-static char * get_sa_name(uint8_t sa);
-static char * get_pgn_name(uint32_t pgn);
+void extract_spn_data(uint32_t spn, const uint64_t * data, uint16_t start_bit, SPNData& spn_data_out);
+cJSON * convert_spndata_to_cjson(const SPNData& spn_data);
+void get_sa_name(uint8_t sa, std::string& name);
+void get_pgn_name(uint32_t pgn, std::string& name);
 
 /* Extract J1939 sub fields from CAN ID */
 static inline uint8_t get_pri(uint32_t id)
@@ -282,9 +277,447 @@ void j1939decode_deinit(void)
     j1939db_source_addresses.clear();
 }
 
-int main()
-{
-    j1939decode_init();
+/**************************************************************************//**
 
-    return 0;
+  \brief Split 64 bit number into JSON array object of bytes
+
+  \param data     pointer to data (8 bytes total)
+
+  \return cJSON * pointer to the JSON array object
+
+******************************************************************************/
+cJSON * create_byte_array(const uint64_t * data)
+{
+    cJSON * array = cJSON_CreateArray();
+    if (array == NULL)
+    {
+        goto cleanup;
+    }
+
+    for (uint32_t i = 0; i < sizeof(data); i++)
+    {
+        /* Cast to uint8 pointer and then index */
+        cJSON * num = cJSON_CreateNumber(((uint8_t *) data)[i]);
+        if (num == NULL)
+        {
+            goto cleanup;
+        }
+        cJSON_AddItemToArray(array, num);
+    }
+
+    return array;
+
+    cleanup:
+    cJSON_Delete(array);
+    return NULL;
+}
+
+/**************************************************************************//**
+
+  \brief Extract suspect parameter number data items and decode SPN value
+
+  \param spn           suspect parameter number
+  \param data          pointer to data (8 bytes total)
+  \param start_bit     starting bit of SPN in PGN (zero-order)
+  \param spn_data_out  SPNData object reference
+
+  \return void
+
+******************************************************************************/
+void extract_spn_data(uint32_t spn, const uint64_t * data, uint16_t start_bit, SPNData& spn_data_out)
+{
+    /* SPNData object for specific SPN data */
+    SPNData spn_data;
+
+    /* Iterator to the desired SPN data */
+    auto spn_itr = j1939db_spns.find(std::to_string(spn));
+
+    /* TODO: Use PascalCase or snake_case for JSON key names?
+     * Existing J1939 lookup table uses PascalCase but snake_case may be more appropriate */
+
+    if (spn_itr != j1939db_spns.end())
+    {
+        /* SPN number found in lookup table */
+
+        /* Get the SPNData object */
+        spn_data = spn_itr->second;
+
+        /* Not currently using name or units */
+        /* TODO: Support bit decodings for when the units are "Bits" */
+        /* TODO: Support decoding of ASCII values when resolution is "ASCII" */
+
+        /* Decode the data for this SPN */
+        uint64_t mask = (1U << (unsigned int) spn_data.spn_length) - 1;
+        uint64_t value_raw = ((*data) >> start_bit) & mask;
+        double value = value_raw * spn_data.resolution + spn_data.offset;
+
+        /* Add extra data fields */
+        spn_data.start_bit = start_bit;
+        spn_data.value_raw = value_raw;
+
+        /* Check that decoded value is within operational range */
+        if (value >= spn_data.operational_low && value <= spn_data.operational_high)
+        {
+            spn_data.value_decoded = value;
+            spn_data.is_valid = true;
+        }
+    }
+    else
+    {
+        log_msg("No SPN data found in database for SPN %d", spn);
+        return;
+    }
+
+    spn_data_out = spn_data;
+}
+
+/**************************************************************************//**
+
+  \brief Convert a SPNData object to a cJSON object
+
+  \param spn_out  SPNData object reference
+
+  \return cJSON * pointer to the SPN data JSON object
+
+******************************************************************************/
+cJSON * convert_spndata_to_cjson(const SPNData& spn_data)
+{
+    /* JSON object containing individual decoded SPN data */
+    cJSON * spn_data_object = cJSON_CreateObject();
+
+    if (spn_data_object == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddStringToObject(spn_data_object, "Name", spn_data.name.c_str()) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddStringToObject(spn_data_object, "DataRange", spn_data.data_range.c_str()) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(spn_data_object, "Offset", spn_data.offset) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(spn_data_object, "OperationalHigh", spn_data.operational_high) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(spn_data_object, "OperationalLow", spn_data.operational_low) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddStringToObject(spn_data_object, "OperationalRange", spn_data.operational_range.c_str()) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(spn_data_object, "Resolution", spn_data.resolution) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(spn_data_object, "SPNLength", spn_data.spn_length) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddStringToObject(spn_data_object, "Units", spn_data.units.c_str()) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(spn_data_object, "StartBit", spn_data.start_bit) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(spn_data_object, "ValueRaw", spn_data.value_raw) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(spn_data_object, "ValueDecoded", spn_data.value_decoded) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddBoolToObject(spn_data_object, "Valid", spn_data.is_valid) == NULL)
+    {
+        goto end;
+    }
+
+end:
+    cJSON_Delete(spn_data_object);
+
+    /* Do not return the freed cJSON pointer to avoid use-after-free flaw
+     * cJSON_Delete() does not set the freed pointer to NULL */
+    return NULL;
+}
+
+/**************************************************************************//**
+
+  \brief Get source address name
+
+  \param sa    source address number
+  \param name  std::string object reference
+
+  \return void
+
+******************************************************************************/
+void get_sa_name(uint8_t sa, std::string& name)
+{
+    /* Preferred Addresses are in the range of 0 to 127 and 248 to 255 */
+    if (sa <= 127 || sa >= 248)
+    {
+        /* Source addresses 92 through to 127 have not yet been assigned */
+        if (sa >= 92 && sa <= 127)
+        {
+            name = std::string("Reserved");
+        }
+        else
+        {
+            /* String large enough to fit a three-digit number (8 bits) */
+            auto sa_name = j1939db_source_addresses[std::to_string(sa)];
+            if (sa_name.empty())
+            {
+                name = "Unknown";
+                log_msg("No source address name found in database for source address %d", sa);
+            }
+        }
+    }
+    /* Industry Group specific addresses are in the range of 128 to 247 */
+    else if (sa >= 128 && sa <= 247)
+    {
+        name = std::string("Industry Group specific");
+    }
+    else
+    {
+        name = std::string("Unknown");
+        log_msg("Unknown source address %d outside of expected range", sa);
+    }
+}
+
+/**************************************************************************//**
+
+  \brief Get parameter group number name
+
+  \param pgn   parameter group number
+  \param name  std::string object reference
+
+  \return void
+
+******************************************************************************/
+void get_pgn_name(uint32_t pgn, std::string& name)
+{
+    auto pgn_name = j1939db_pgns[std::to_string(pgn)].name;
+    if (pgn_name.empty())
+    {
+        name = "Unknown";
+        log_msg("No PGN name found in database for PGN %d", pgn);
+
+        return;
+    }
+
+    name = pgn_name;
+}
+
+/**************************************************************************//**
+
+  \brief Build JSON string for j1939 decoded data
+
+  \param id         CAN identifier
+  \param dlc        data length code
+  \param data       pointer to data (8 bytes total)
+  \param pretty     pretty print returned JSON string
+
+  \return char *    pointer to the JSON string
+
+******************************************************************************/
+char * j1939decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, bool pretty)
+{
+    /* Fail and return NULL if maps haven't been populated
+     * Remember to call j1939decode_init() first! */
+    if (j1939db_pgns.empty() || j1939db_spns.empty() || j1939db_source_addresses.empty())
+    {
+        log_msg("J1939 database not loaded");
+        return NULL;
+    }
+
+    if (dlc > 8)
+    {
+        log_msg("DLC cannot be greater than 8 bytes");
+        return NULL;
+    }
+
+    /* PGN & SA */
+    const auto pgn = get_pgn(id);
+    const auto sa = get_sa(id);
+
+    /* PGNData object for specific PGN data */
+    PGNData pgn_data;
+
+    /* Iterator to the desired PGN data */
+    auto pgn_itr = j1939db_pgns.find(std::to_string(pgn));
+
+    /* Decoded flag default to false until set otherwise */
+    bool decoded_flag = false;
+
+    /* JSON string to be returned */
+    char * json_string = NULL;
+
+    /* Intermediate std::string object */
+    std::string str{};
+
+    /* JSON object containing decoded J1939 data */
+    cJSON * json_object = cJSON_CreateObject();
+
+    if (json_object == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(json_object, "ID", id) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(json_object, "Priority", get_pri(id)) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(json_object, "PGN", pgn) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(json_object, "SA", sa) == NULL)
+    {
+        goto end;
+    }
+
+    get_sa_name(sa, str);
+    if (cJSON_AddStringToObject(json_object, "SAName", str.c_str()) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddNumberToObject(json_object, "DLC", dlc) == NULL)
+    {
+        goto end;
+    }
+
+    /* Add raw data bytes to JSON object */
+    cJSON_AddItemToObject(json_object, "DataRaw", create_byte_array(data));
+
+    if (pgn_itr != j1939db_pgns.end())
+    {
+        /* PGN number found in lookup table */
+
+        /* Get the PGNData object */
+        pgn_data = pgn_itr->second;
+
+        get_pgn_name(pgn, str);
+        if (cJSON_AddStringToObject(json_object, "PGNName", str.c_str()) == NULL)
+        {
+            goto end;
+        }
+
+        /* JSON object containing list of decoded SPN data */
+        cJSON * spn_object = cJSON_CreateObject();
+        if (spn_object == NULL)
+        {
+            goto end;
+        }
+
+        if (!pgn_data.spns.empty())
+        {
+            /* One or more SPNs exist for PGN */
+
+            for (auto i = 0; i < pgn_data.spns.size(); i++)
+            {
+                /* Getting SPN number from SPN list in PGN since the SPN number is used as a key only and not included in the SPN data object itself */
+                auto spn_number = pgn_data.spns[i];
+
+                /* Array of all possible proprietary SPNs */
+                const std::vector<uint32_t> proprietary_spns{ 2550, 2551, 3328 };
+
+                /* Check for proprietary SPNs */
+                if (std::find(proprietary_spns.begin(), proprietary_spns.end(), spn_number) != proprietary_spns.end())
+                {
+                    /* TODO: Disabling print to silently ignore proprietary SPNs */
+                    /* log_msg("Skipping decode for proprietary SPN %d", spn_number); */
+                }
+                else
+                {
+                    /* Need to pass SPN starting bit position since it is found in the PGN data object */
+                    auto start_bit = pgn_data.spn_start_bits[i];
+                    if (start_bit < 0)
+                    {
+                        log_msg("Start bit cannot be negative for SPN %d, skipping decode", spn_number);
+                        continue;
+                    }
+
+                    /* SPNData object for specific SPN data */
+                    SPNData spn_data;
+
+                    extract_spn_data(spn_number, data, start_bit, spn_data);
+
+                    if (!spn_data.name.empty())
+                    {
+                        /* At least one SPN found in database and actually decoded */
+
+                        /* TODO: What criteria should be used to determine if the message should be flagged as "decoded" or not?
+                            * 1. If PGN data found in database?
+                            * 2. If at least one SPN found in database for PGN?
+                            * 3. If at least one SPN, with start bits, found in database for PGN?
+                            * 4. If at least one SPN actually decoded? (i.e. extract_spn_data() did not return NULL)
+                            * Using #4 criteria for now */
+
+                        decoded_flag = true;
+                    }
+
+                    cJSON_AddItemToObject(spn_object, std::to_string(spn_number).c_str(), convert_spndata_to_cjson(spn_data));
+                }
+            }
+        }
+        else
+        {
+            log_msg("No SPNs found in database for PGN %d", get_pgn(id));
+        }
+
+        /* Add SPN list object to the main JSON object */
+        cJSON_AddItemToObject(json_object, "SPNs", spn_object);
+    }
+    else
+    {
+        /* TODO: This print may happen too often when trying to decode non-J1939 data */
+        /* log_msg("PGN %d not found in database", get_pgn(id)); */
+    }
+
+    if (cJSON_AddBoolToObject(json_object, "Decoded", decoded_flag) == NULL)
+    {
+        goto end;
+    }
+
+    /* Print the JSON string
+     * Memory will be allocated so remember to free it when you are done with it! */
+    json_string = pretty ? cJSON_Print(json_object) : cJSON_PrintUnformatted(json_object);
+    if (json_string == NULL)
+    {
+        log_msg("Failed to print JSON string");
+    }
+
+end:
+    cJSON_Delete(json_object);
+    return json_string;
 }

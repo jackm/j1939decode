@@ -1,21 +1,14 @@
 #ifndef J1939DECODE_H
 #define J1939DECODE_H
 
-//? #ifdef __cplusplus
-//? extern "C" {
-//? #endif
-
-//? #include <stdint.h>
-//? #include <stdbool.h>
-
 #include <cstdint>
 #include <string>
 #include <vector>
 
 /* Project version */
 #define J1939DECODE_VERSION_MAJOR 3
-#define J1939DECODE_VERSION_MINOR 1
-#define J1939DECODE_VERSION_PATCH 1
+#define J1939DECODE_VERSION_MINOR 2
+#define J1939DECODE_VERSION_PATCH 0
 
 /* J1939 digital annex JSON filename */
 #define J1939DECODE_DB "/home/nathanl/projects/palisade/attacks/J1939db.json"  //! LOCAL ONLY
@@ -29,14 +22,15 @@ struct PGNData
 	std::string rate{};
 
 	std::vector<uint32_t> spns;
-	std::vector<int8_t> spn_start_bits;
+	std::vector<int16_t> spn_start_bits;
 };
 
 /* SPN data struct */
 struct SPNData
 {
-	std::string data_range{};
+    /* Fields taken from JSON */
 	std::string name{};
+	std::string data_range{};
 	std::string operational_range{};
 	std::string units{};
 
@@ -45,6 +39,12 @@ struct SPNData
 	double operational_low{ 0.0 };
 	double resolution{ 0.0 };
 	uint8_t	spn_length{ 0U };
+
+    /* Extra fields that we add when decoding */
+    int16_t start_bit{ 0 };
+    uint64_t value_raw{ 0U };
+    double value_decoded{ 0.0 };
+    bool is_valid = false;
 };
 
 /* Log function pointer type */
@@ -96,9 +96,5 @@ void j1939decode_deinit(void);
 }
  */
 char * j1939decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, bool pretty);
-
-//? #ifdef __cplusplus
-//? }
-//? #endif
 
 #endif //J1939DECODE_H
