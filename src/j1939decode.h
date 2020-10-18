@@ -7,8 +7,8 @@
 
 /* Project version */
 #define J1939DECODE_VERSION_MAJOR 3
-#define J1939DECODE_VERSION_MINOR 2
-#define J1939DECODE_VERSION_PATCH 0
+#define J1939DECODE_VERSION_MINOR 1
+#define J1939DECODE_VERSION_PATCH 1
 
 /* J1939 digital annex JSON filename */
 #define J1939DECODE_DB "J1939db.json"
