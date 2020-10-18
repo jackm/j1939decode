@@ -11,7 +11,7 @@
 #define J1939DECODE_VERSION_PATCH 0
 
 /* J1939 digital annex JSON filename */
-#define J1939DECODE_DB "/home/nathanl/projects/palisade/attacks/J1939db.json"  //! LOCAL ONLY
+#define J1939DECODE_DB "J1939db.json"
 
 /* PGN data struct */
 struct PGNData
