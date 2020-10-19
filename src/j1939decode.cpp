@@ -18,11 +18,11 @@ static log_fn_ptr log_fn = NULL;
 static cJSON * j1939db_json = NULL;
 
 /* std::unordered_map object for all PGNs */
-std::unordered_map<std::string, PGNData> j1939db_pgns;
+std::unordered_map<uint32_t, PGNData> j1939db_pgns;
 /* std::unordered_map object for all SPNs */
-std::unordered_map<std::string, SPNData> j1939db_spns;
+std::unordered_map<uint32_t, SPNData> j1939db_spns;
 /* std::unordered_map object for all source addresses */
-std::unordered_map<std::string, std::string> j1939db_source_addresses;
+std::unordered_map<uint8_t, std::string> j1939db_source_addresses;
 
 /* Static helper functions */
 static void log_msg(const char * fmt, ...);
@@ -218,7 +218,7 @@ void j1939decode_init(void)
             );
         }
 
-        j1939db_pgns.insert({ std::string(pgn_item->string), pgn_data });
+        j1939db_pgns.insert({ std::stoul(pgn_item->string), pgn_data });
         pgn_data.spns.clear();
         pgn_data.spn_start_bits.clear();
 
@@ -241,7 +241,7 @@ void j1939decode_init(void)
         spn_data.spn_length = static_cast<uint8_t>(cJSON_GetObjectItemCaseSensitive(spn_item, "SPNLength")->valueint);
         spn_data.units = std::string(cJSON_GetObjectItemCaseSensitive(spn_item, "Units")->valuestring);
 
-        j1939db_spns.insert({ std::string(spn_item->string), spn_data });
+        j1939db_spns.insert({ std::stoul(spn_item->string), spn_data });
         spn_item = spn_item->next;
     }
     j1939db_spns.rehash(j1939db_spns.size());
@@ -251,7 +251,7 @@ void j1939decode_init(void)
     while (sa_item)
     {
         j1939db_source_addresses.insert({
-                std::string(sa_item->string),
+                static_cast<uint8_t>(std::stoi(sa_item->string)),
                 std::string(sa_item->valuestring)
             }
         );
@@ -333,7 +333,7 @@ void extract_spn_data(uint32_t spn, const uint64_t * data, uint16_t start_bit, S
     SPNData spn_data;
 
     /* Iterator to the desired SPN data */
-    auto spn_itr = j1939db_spns.find(std::to_string(spn));
+    auto spn_itr = j1939db_spns.find(spn);
 
     /* TODO: Use PascalCase or snake_case for JSON key names?
      * Existing J1939 lookup table uses PascalCase but snake_case may be more appropriate */
@@ -489,7 +489,7 @@ void get_sa_name(uint8_t sa, std::string& name)
         else
         {
             /* String large enough to fit a three-digit number (8 bits) */
-            auto sa_name = j1939db_source_addresses[std::to_string(sa)];
+            auto sa_name = j1939db_source_addresses[sa];
             if (sa_name.empty())
             {
                 name = "Unknown";
@@ -521,7 +521,7 @@ void get_sa_name(uint8_t sa, std::string& name)
 ******************************************************************************/
 void get_pgn_name(uint32_t pgn, std::string& name)
 {
-    auto pgn_name = j1939db_pgns[std::to_string(pgn)].name;
+    auto pgn_name = j1939db_pgns[pgn].name;
     if (pgn_name.empty())
     {
         name = "Unknown";
@@ -569,7 +569,7 @@ char * j1939decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, bool
     PGNData pgn_data;
 
     /* Iterator to the desired PGN data */
-    auto pgn_itr = j1939db_pgns.find(std::to_string(pgn));
+    auto pgn_itr = j1939db_pgns.find(pgn);
 
     /* Decoded flag default to false until set otherwise */
     bool decoded_flag = false;
