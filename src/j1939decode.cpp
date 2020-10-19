@@ -224,6 +224,7 @@ void j1939decode_init(void)
 
         pgn_item = pgn_item->next;
     }
+    j1939db_pgns.rehash(j1939db_pgns.size());
 
     auto spn_item = spn_root->child ? spn_root->child : nullptr;
     auto spn_data = SPNData();
@@ -243,6 +244,7 @@ void j1939decode_init(void)
         j1939db_spns.insert({ std::string(spn_item->string), spn_data });
         spn_item = spn_item->next;
     }
+    j1939db_spns.rehash(j1939db_spns.size());
 
     auto sa_item = sa_root->child ? sa_root->child : nullptr;
 
@@ -255,6 +257,7 @@ void j1939decode_init(void)
         );
         sa_item = sa_item->next;
     }
+    j1939db_source_addresses.rehash(j1939db_source_addresses.size());
 
     /* cJSON_Delete() checks if pointer is NULL before freeing */
     cJSON_Delete(j1939db_json);
