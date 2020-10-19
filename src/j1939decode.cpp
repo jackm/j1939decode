@@ -458,6 +458,8 @@ cJSON * convert_spndata_to_cjson(const SPNData& spn_data)
         goto end;
     }
 
+    return spn_data_object;
+
 end:
     cJSON_Delete(spn_data_object);
 
@@ -489,8 +491,8 @@ void get_sa_name(uint8_t sa, std::string& name)
         else
         {
             /* String large enough to fit a three-digit number (8 bits) */
-            auto sa_name = j1939db_source_addresses[sa];
-            if (sa_name.empty())
+            name = j1939db_source_addresses[sa];
+            if (name.empty())
             {
                 name = "Unknown";
                 log_msg("No source address name found in database for source address %d", sa);
