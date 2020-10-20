@@ -97,6 +97,7 @@ All members relate to the specific SPN under which they are found.
 * "_ValueDecoded_": decoded data value
 * "_Units_": units of the decoded data value
 * "_Valid_": boolean indicating if the decoded data value is valid (i.e. is within operational data range)
+* "_OutOfRange_": boolean indicating if the decoded data value is outside of operational data range
 
 Example JSON object for a fully decoded J1939 CAN message:
 
@@ -125,7 +126,8 @@ Example JSON object for a fully decoded J1939 CAN message:
       "ValueRaw": 6019,
       "ValueDecoded": 752.375,
       "Units": "rpm",
-      "Valid": true
+      "Valid": true,
+      "OutOfRange": false
     },
     ...
   }

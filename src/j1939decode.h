@@ -45,6 +45,7 @@ struct SPNData
     uint64_t value_raw{ 0U };
     double value_decoded{ 0.0 };
     bool is_valid = false;
+    bool is_out_of_range = false;
 };
 
 /* Log function pointer type */

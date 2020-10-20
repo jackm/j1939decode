@@ -364,6 +364,15 @@ void extract_spn_data(uint32_t spn, const uint64_t * data, uint16_t start_bit, S
             spn_data.value_decoded = value;
             spn_data.is_valid = true;
         }
+        /* Check if at least one bit is not set */
+        else if (value_raw != mask)
+        {
+            /* Decoded value is outside of operational range
+             * and not every bit is set - value is likely out-of-range */
+            /* If all bits are set it commonly indicates that the value is "Not available" */
+            spn_data.value_decoded = value;
+            spn_data.is_out_of_range = true;
+        }
     }
     else
     {
@@ -454,6 +463,11 @@ cJSON * convert_spndata_to_cjson(const SPNData& spn_data)
     }
 
     if (cJSON_AddBoolToObject(spn_data_object, "Valid", spn_data.is_valid) == NULL)
+    {
+        goto end;
+    }
+
+    if (cJSON_AddBoolToObject(spn_data_object, "OutOfRange", spn_data.is_out_of_range) == NULL)
     {
         goto end;
     }
