@@ -1,5 +1,5 @@
 set(SOURCES
-        j1939decode.c j1939decode.h
+        j1939decode.cpp j1939decode.h
         cJSON.c cJSON.h
         )
 

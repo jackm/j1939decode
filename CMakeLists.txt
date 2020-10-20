@@ -12,10 +12,9 @@ set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 message(STATUS "j1939decode version: ${VERSION}")
 
 project(j1939decode
-        VERSION "${VERSION}"
-        LANGUAGES C)
+        VERSION "${VERSION}")
 
-set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 
 set(STATIC_LIB static)

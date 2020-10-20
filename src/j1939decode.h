@@ -1,12 +1,9 @@
 #ifndef J1939DECODE_H
 #define J1939DECODE_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <stdint.h>
-#include <stdbool.h>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 /* Project version */
 #define J1939DECODE_VERSION_MAJOR 3
@@ -15,6 +12,40 @@ extern "C" {
 
 /* J1939 digital annex JSON filename */
 #define J1939DECODE_DB "J1939db.json"
+
+/* PGN data struct */
+struct PGNData
+{
+	std::string label{};
+	std::string name{};
+	std::string pgn_length{};
+	std::string rate{};
+
+	std::vector<uint32_t> spns;
+	std::vector<int16_t> spn_start_bits;
+};
+
+/* SPN data struct */
+struct SPNData
+{
+    /* Fields taken from JSON */
+	std::string name{};
+	std::string data_range{};
+	std::string operational_range{};
+	std::string units{};
+
+	double offset{ 0.0 };
+	double operational_high{ 0.0 };
+	double operational_low{ 0.0 };
+	double resolution{ 0.0 };
+	uint8_t	spn_length{ 0U };
+
+    /* Extra fields that we add when decoding */
+    int16_t start_bit{ 0 };
+    uint64_t value_raw{ 0U };
+    double value_decoded{ 0.0 };
+    bool is_valid = false;
+};
 
 /* Log function pointer type */
 typedef void (*log_fn_ptr)(const char *);
@@ -28,7 +59,7 @@ const char * j1939decode_version(void);
 /* Initialize and allocate memory for J1939 lookup table */
 void j1939decode_init(void);
 
-/* Deinitialize and free memory for J1939 lookup table */
+/* Clears the J1939 maps */
 void j1939decode_deinit(void);
 
 /* Build JSON string for j1939 decoded data
@@ -65,9 +96,5 @@ void j1939decode_deinit(void);
 }
  */
 char * j1939decode_to_json(uint32_t id, uint8_t dlc, const uint64_t * data, bool pretty);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif //J1939DECODE_H
