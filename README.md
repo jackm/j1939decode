@@ -137,5 +137,5 @@ The eclipses shows where additional SPN sub-objects would appear.
 #### Important notes:
 
 * "_Decoded_" boolean should be checked before using the members in the SPN sub-object(s); if it is _false_, then the "_SPNs_" object may not even exist
-* "_Valid_" boolean from within an SPN sub-object should be checked before using the decoded data value; most often if the decoded data value is not valid, it will be set to the string "Not Available"
+* "_Valid_" boolean from within an SPN sub-object should be checked before using the decoded data value; most often if the decoded data value is not valid, it will be set to the default of zero
 * "_PGNName_" and "_SPNName_" values are found using a simple lookup table based on their number values; if the decoded CAN message is not a real J1939 message these members may still exist if the CAN identifier bits happen to match a value found in the J1939 protocol spec although this does not necessarily mean that the CAN message was a valid J1939 message
