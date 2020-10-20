@@ -31,12 +31,6 @@ To install first build the library, then run `sudo make install` from within the
 
 To uninstall run `sudo make uninstall` from within the build directory.
 
-## Testing
-
-Unit tests make use of the [Unity testing framework](http://www.throwtheswitch.org/unity) which is used by the [Ceedling](http://www.throwtheswitch.org/ceedling) build system.
-
-To start all tests run `ceedling test:all`.
-
 ## Library usage
 
 Call `j1939decode_init()` first _before_ calling `j1939decode_to_json()`.
