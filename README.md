@@ -138,7 +138,7 @@ Example JSON object for a fully decoded J1939 CAN message:
 }
 ```
 
-The eclipses shows where additional SPN sub-objects would appear.
+The ellipses shows where additional SPN sub-objects would appear.
 
 #### Important notes:
 
